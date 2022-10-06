@@ -4,7 +4,7 @@ import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
 
-describe("TeamDao", () => {
+describe("Team CRUD tests", () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);
@@ -17,7 +17,7 @@ describe("TeamDao", () => {
 
 	const program = anchor.workspace.TeamDao as Program<TeamDao>;
 
-	let teamName = "Test Team";
+	let teamName = "Test Team 1";
 	let uid = new anchor.BN(1234567890);
 	let teamAccountAddr;
 
@@ -36,7 +36,7 @@ describe("TeamDao", () => {
 		const tx = await ix.rpc();
 	});
 
-	it("should create a team successfully", async () => {
+	xit("should create a team successfully", async () => {
 		const teamAccount = await program.account.teamAccount.fetch(
 			teamAccountAddr
 		);
@@ -44,7 +44,7 @@ describe("TeamDao", () => {
 		assert.equal(teamAccount.name, teamName);
 	});
 
-	it("should add a member to the team", async () => {
+	xit("should add a member to the team", async () => {
 		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
 
 		let teamLength = teamAccount.members.length;
@@ -59,5 +59,58 @@ describe("TeamDao", () => {
 			teamAccount.members[teamAccount.members.length - 1].toBase58(),
 			bob.publicKey.toBase58()
 		);
+	});
+
+	xit("should remove a member from the team", async () => {
+		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		let teamLength = teamAccount.members.length;
+
+		const ix = await program.methods.removeMember(teamName, uid, bob.publicKey);
+		const tx = await ix.rpc();
+
+		teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		assert.equal(teamAccount.members.length, teamLength - 1);
+	});
+
+	xit("should transfer the captain role of the team", async () => {
+		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		let newMember = anchor.web3.Keypair.generate();
+
+		const ix = await program.methods.addMember(
+			teamName,
+			uid,
+			newMember.publicKey
+		);
+		const tx = await ix.rpc();
+
+		const ix2 = await program.methods.transferCaptain(
+			teamName,
+			uid,
+			newMember.publicKey
+		);
+		const tx2 = await ix2.rpc();
+
+		teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		assert.equal(
+			teamAccount.captain.toBase58(),
+			newMember.publicKey.toBase58()
+		);
+	});
+
+	xit("should let a member to leave team successfully", async () => {
+		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		let teamLength = teamAccount.members.length;
+
+		const ix = await program.methods.leaveTeam(teamName, uid);
+		const tx = await ix.rpc();
+
+		teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
+
+		assert.equal(teamAccount.members.length, teamLength - 1);
 	});
 });
