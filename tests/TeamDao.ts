@@ -4,7 +4,7 @@ import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
 
-describe("Team CRUD tests", () => {
+xdescribe("Team CRUD tests", () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);
@@ -36,7 +36,7 @@ describe("Team CRUD tests", () => {
 		const tx = await ix.rpc();
 	});
 
-	xit("should create a team successfully", async () => {
+	it("should create a team successfully", async () => {
 		const teamAccount = await program.account.teamAccount.fetch(
 			teamAccountAddr
 		);
@@ -44,7 +44,7 @@ describe("Team CRUD tests", () => {
 		assert.equal(teamAccount.name, teamName);
 	});
 
-	xit("should add a member to the team", async () => {
+	it("should add a member to the team", async () => {
 		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
 
 		let teamLength = teamAccount.members.length;
@@ -61,7 +61,7 @@ describe("Team CRUD tests", () => {
 		);
 	});
 
-	xit("should remove a member from the team", async () => {
+	it("should remove a member from the team", async () => {
 		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
 
 		let teamLength = teamAccount.members.length;
@@ -74,7 +74,7 @@ describe("Team CRUD tests", () => {
 		assert.equal(teamAccount.members.length, teamLength - 1);
 	});
 
-	xit("should transfer the captain role of the team", async () => {
+	it("should transfer the captain role of the team", async () => {
 		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
 
 		let newMember = anchor.web3.Keypair.generate();
@@ -101,7 +101,7 @@ describe("Team CRUD tests", () => {
 		);
 	});
 
-	xit("should let a member to leave team successfully", async () => {
+	it("should let a member to leave team successfully", async () => {
 		let teamAccount = await program.account.teamAccount.fetch(teamAccountAddr);
 
 		let teamLength = teamAccount.members.length;
