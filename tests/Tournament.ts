@@ -4,7 +4,7 @@ import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
 
-xdescribe("Voting and Distributing tests", () => {
+describe("Voting and Distributing tests", () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);
@@ -21,6 +21,7 @@ xdescribe("Voting and Distributing tests", () => {
 	let teamName = "Test Team 2";
 	let uid = new anchor.BN(1234567);
 	let teamAccountAddr;
+	let voteAccountAddr;
 
 	// the team addresses array
 	let team = [alice.publicKey, bob.publicKey, carol.publicKey, dan.publicKey];
@@ -46,13 +47,15 @@ xdescribe("Voting and Distributing tests", () => {
 		}
 	});
 
-	it("should create a team successfully", async () => {
-		const teamAccount = await program.account.teamAccount.fetch(
-			teamAccountAddr
+	it("should initilize the voting", async () => {
+		const ix = await program.methods.initVote(teamAccountAddr);
+		voteAccountAddr = (await ix.pubkeys()).voteAccount;
+		const tx = await ix.rpc();
+
+		const voteAccount = await program.account.voteAccount.fetch(
+			voteAccountAddr
 		);
 
-		const team = await program.account.teamAccount.fetch(teamAccountAddr);
-
-		console.log(team);
+		assert.equal(voteAccount.team.toBase58(), teamAccountAddr);
 	});
 });

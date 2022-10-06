@@ -157,14 +157,15 @@ pub mod team_dao {
             ErrorCode::MemberNotInTeamError
         );
 
-        // if the captain is leaving the team, transfer the captain role to the first member in the team
         if team.members.len() == 1 {
+            // if the captain is the last member disband team
             // delete team
             team.name = "".to_string();
             team.captain = Pubkey::default();
             team.id = 0;
             team.members = vec![];
-        } else if team.captain == *ctx.accounts.signer.key {
+        }
+        if team.captain == *ctx.accounts.signer.key {
             // transfer captain role to the second member in the team
             team.captain = team.members[1];
         }
@@ -180,7 +181,32 @@ pub mod team_dao {
 
         Ok(())
     }
+
+    // ----------------------------------------------
+    // voting related instructions
+
+    // creating vote of a spesific team
+    // @param team_account_address : address of the team account, used to create pda
+    pub fn init_vote(ctx: Context<InitializeVote>, team_account_address: Pubkey) -> Result<()> {
+        let vote = &mut ctx.accounts.vote_account;
+
+        vote.bump = *ctx
+            .bumps
+            .get("vote_account")
+            .ok_or(ErrorCode::InvalidBumpSeeds)?;
+
+        // assigning required parameters to the vote
+        vote.team = team_account_address;
+        vote.yes = 0;
+        vote.no = 0;
+
+        msg!("Vote created");
+
+        Ok(())
+    }
 }
+
+// derive macros for member instructions
 
 // derive macro for create team instruction
 #[derive(Accounts)]
@@ -232,8 +258,6 @@ pub struct TransferCaptain<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// derive macros for member instructions
-
 // leave team instruction
 #[derive(Accounts)]
 #[instruction(team_name: String, team_id: u64)]
@@ -266,6 +290,62 @@ impl TeamAccount {
     + 8; // id
 }
 
+// ----------------------------------------------
+// voting related instructions and accounts
+
+// derive macro for initialize vote instruction
+#[derive(Accounts)]
+#[instruction(_team_account_address: Pubkey)]
+pub struct InitializeVote<'info> {
+    #[account(init, payer = signer, space= VoteAccount::LEN, seeds=[_team_account_address.as_ref()], bump)]
+    pub vote_account: Account<'info, VoteAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// derive macro for vote instruction
+#[derive(Accounts)]
+#[instruction(team_account_address: Pubkey)]
+pub struct Vote<'info> {
+    #[account(mut, seeds=[team_account_address.as_ref()], bump = vote_account.bump)]
+    pub vote_account: Account<'info, VoteAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// vote account struct
+#[account]
+pub struct VoteAccount {
+    pub team: Pubkey,
+    pub bump: u8,
+    pub yes: u8,
+    pub no: u8,
+    pub id: u8,
+    pub voters: Vec<Pubkey>,
+}
+
+impl VoteAccount {
+    const LEN: usize = 8 // discriminator 
+    + 32 // team pubkey 
+    + 1 // bump 
+    + 1 // votes yes
+    + 1 // votes no
+    + 1 // id
+    + 5 * 32; // voters vector
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub enum VoteType {
+    Yes,
+    No,
+}
+
 #[error_code]
 pub enum ErrorCode {
     #[msg("A team can contain maximum 5 members")]
@@ -282,4 +362,8 @@ pub enum ErrorCode {
     MemberAlreadyInTeamError,
     #[msg("Captain cannot leave the team unless he transfers the captain role to another member")]
     CaptainCannotLeaveTeamError,
+    #[msg("Vote is already casted")]
+    AlreadyVotedError,
+    #[msg("Invalid vote")]
+    InvalidVoteError,
 }
