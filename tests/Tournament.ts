@@ -1,5 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
+import { decodeIdlAccount } from "@project-serum/anchor/dist/cjs/idl";
 import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace/methods";
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
@@ -24,38 +25,69 @@ describe("Voting and Distributing tests", () => {
 	let voteAccountAddr;
 
 	// the team addresses array
-	let team = [alice.publicKey, bob.publicKey, carol.publicKey, dan.publicKey];
+	let team = [alice, bob, carol, dan];
 
 	let teamPda, teamBump;
+	let votePda, voteBump;
 
 	before(async () => {
+		// creating account here because i will use it in other tests
+		const ix = await program.methods.createTeam(teamName, uid);
+		teamAccountAddr = (await ix.pubkeys()).teamAccount;
+		const tx = await ix.rpc();
+
 		[teamPda, teamBump] = await anchor.web3.PublicKey.findProgramAddress(
 			[Buffer.from(teamName), Buffer.from(`${uid}`)],
 			program.programId
 		);
 
-		// creating account here because i will use it in other tests
-		const ix = await program.methods.createTeam(teamName, uid);
-		teamAccountAddr = (await ix.pubkeys()).teamAccount;
+		const ix2 = await program.methods.initVote(teamAccountAddr);
+		voteAccountAddr = (await ix2.pubkeys()).voteAccount;
+		const tx2 = await ix2.rpc();
 
-		const tx = await ix.rpc();
+		[votePda, voteBump] = await anchor.web3.PublicKey.findProgramAddress(
+			[Buffer.from(teamAccountAddr.toBytes())],
+			program.programId
+		);
+
+		const ix3 = await program.methods.vote(teamAccountAddr, { yes: {} });
+		const tx3 = await ix3.rpc();
+
+		let voteAccount = await program.account.voteAccount.fetch(voteAccountAddr);
+		console.log(voteAccount);
 
 		// adding members to the team
 		for (let i = 0; i < team.length; i++) {
-			const ix = await program.methods.addMember(teamName, uid, team[i]);
-			const tx = await ix.rpc();
+			let ix = await program.methods
+				.vote(teamAccountAddr, { yes: {} })
+				.accounts({
+					voteAccount: voteAccount,
+					signer: team[i],
+					systemProgram: anchor.web3.SystemProgram.programId,
+				})
+				.rpc();
 		}
+		voteAccount = await program.account.voteAccount.fetch(voteAccountAddr);
+
+		console.log(voteAccount);
 	});
 
-	it("should initilize the voting", async () => {
-		const ix = await program.methods.initVote(teamAccountAddr);
-		voteAccountAddr = (await ix.pubkeys()).voteAccount;
+	xit("should initilize the voting", async () => {
+		const voteAccount = await program.account.voteAccount.fetch(
+			voteAccountAddr
+		);
+
+		assert.equal(voteAccount.team.toBase58(), teamAccountAddr);
+	});
+
+	xit("should vote for a proposal", async () => {
+		const ix = await program.methods.vote(teamAccountAddr, { yes: {} });
 		const tx = await ix.rpc();
 
 		const voteAccount = await program.account.voteAccount.fetch(
 			voteAccountAddr
 		);
 
-		assert.equal(voteAccount.team.toBase58(), teamAccountAddr);
+		console.log(voteAccount);
 	});
 });

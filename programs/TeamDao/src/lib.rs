@@ -204,6 +204,39 @@ pub mod team_dao {
 
         Ok(())
     }
+
+    // members voting
+    // @param team_account_address: address of the team account, used to to find the vote account
+    // @param vote: vote to cast
+    pub fn vote(
+        ctx: Context<Vote>,
+        _team_account_address: Pubkey,
+        vote_type: VoteType,
+    ) -> Result<()> {
+        let vote = &mut ctx.accounts.vote_account;
+
+        // checking if the vote is already closed
+        require!(vote.yes + vote.no < 5, ErrorCode::VoteClosedError);
+
+        // checking if the signer has already voted
+        require!(
+            !vote.voters.contains(ctx.accounts.signer.key),
+            ErrorCode::AlreadyVotedError
+        );
+
+        // adding the voter to the list of voters
+        vote.voters.push(*ctx.accounts.signer.key);
+
+        // casting the vote
+        match vote_type {
+            VoteType::Yes => vote.yes += 1,
+            VoteType::No => vote.no += 1,
+        }
+
+        msg!("Vote casted");
+
+        Ok(())
+    }
 }
 
 // derive macros for member instructions
@@ -308,9 +341,9 @@ pub struct InitializeVote<'info> {
 
 // derive macro for vote instruction
 #[derive(Accounts)]
-#[instruction(team_account_address: Pubkey)]
+#[instruction(_team_account_address: Pubkey)]
 pub struct Vote<'info> {
-    #[account(mut, seeds=[team_account_address.as_ref()], bump = vote_account.bump)]
+    #[account(mut, seeds=[_team_account_address.as_ref()], bump = vote_account.bump)]
     pub vote_account: Account<'info, VoteAccount>,
 
     #[account(mut)]
@@ -362,8 +395,10 @@ pub enum ErrorCode {
     MemberAlreadyInTeamError,
     #[msg("Captain cannot leave the team unless he transfers the captain role to another member")]
     CaptainCannotLeaveTeamError,
-    #[msg("Vote is already casted")]
+    #[msg("You have already voted")]
     AlreadyVotedError,
+    #[msg("Voting is closed for this team")]
+    VoteClosedError,
     #[msg("Invalid vote")]
     InvalidVoteError,
 }
