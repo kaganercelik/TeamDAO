@@ -182,58 +182,129 @@ pub mod team_dao {
         Ok(())
     }
 
-    // ----------------------------------------------
-    // voting related instructions
+    // vote for tournament
+    // @param _team_name : name of the team, used in pda
+    // @param _team_id : id of the team, used in pda
+    // @param tournament_address : tournament address
+    pub fn vote_for_tournament(
+        ctx: Context<VoteForTournament>,
+        _team_name: String,
+        _team_id: u64,
+        tournament_address: Pubkey,
+        vote_type: VoteType,
+    ) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
 
-    // creating vote of a spesific team
-    // @param team_account_address : address of the team account, used to create pda
-    pub fn init_vote(ctx: Context<InitializeVote>, team_account_address: Pubkey) -> Result<()> {
-        let vote = &mut ctx.accounts.vote_account;
+        // checking if the team still has an active tournament
+        require!(
+            team.active_tournament == Pubkey::default(),
+            ErrorCode::AlreadyActiveTournamentError
+        );
+        // checking if the signer is in the team
+        require!(
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
+        );
+        // checking if the tournament is not already voted
+        require!(
+            !team.voted_players.contains(ctx.accounts.signer.key),
+            ErrorCode::AlreadyVotedError
+        );
 
-        vote.bump = *ctx
-            .bumps
-            .get("vote_account")
-            .ok_or(ErrorCode::InvalidBumpSeeds)?;
+        // checking vote type
+        match vote_type {
+            VoteType::Yes => {
+                // adding the player to voted players
+                team.voted_players.push(*ctx.accounts.signer.key);
+                // incrementing yes votes
+                team.yes_votes += 1;
+            }
+            VoteType::No => {
+                // adding the player to voted players
+                team.voted_players.push(*ctx.accounts.signer.key);
+            }
+        }
 
-        // assigning required parameters to the vote
-        vote.team = team_account_address;
-        vote.yes = 0;
-        vote.no = 0;
+        // checking if the vote is successful
+        if team.yes_votes > 2 {
+            // if yes votes are more than half of the team members
+            // add the tournament to the team's active tournament
+            team.active_tournament = tournament_address;
+            // reset yes votes
+            team.yes_votes = 0;
+            // reset voted players
+            team.voted_players = vec![];
 
-        msg!("Vote created");
+            team.voting_result = true;
+        }
+
+        msg!(
+            "{} is successfully voted for the tournament {}",
+            team.name,
+            team.name
+        );
 
         Ok(())
     }
 
-    // members voting
-    // @param team_account_address: address of the team account, used to to find the vote account
-    // @param vote: vote to cast
-    pub fn vote(
-        ctx: Context<Vote>,
-        _team_account_address: Pubkey,
+    // leave a tournament
+    // @param _team_name : name of the team, used in pda
+    // @param _team_id : id of the team, used in pda
+    pub fn leave_tournament(
+        ctx: Context<LeaveTournament>,
+        _team_name: String,
+        _team_id: u64,
         vote_type: VoteType,
     ) -> Result<()> {
-        let vote = &mut ctx.accounts.vote_account;
+        let team = &mut ctx.accounts.team_account;
 
-        // checking if the vote is already closed
-        require!(vote.yes + vote.no < 5, ErrorCode::VoteClosedError);
-
-        // checking if the signer has already voted
+        // checking if the signer is in the team
         require!(
-            !vote.voters.contains(ctx.accounts.signer.key),
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
+        );
+
+        // checking if the team has an active tournament
+        require!(
+            team.active_tournament != Pubkey::default(),
+            ErrorCode::NoActiveTournamentError
+        );
+
+        // checking if the tournament is not already voted
+        require!(
+            !team.voted_players.contains(ctx.accounts.signer.key),
             ErrorCode::AlreadyVotedError
         );
 
-        // adding the voter to the list of voters
-        vote.voters.push(*ctx.accounts.signer.key);
-
-        // casting the vote
+        // checking the vote type
         match vote_type {
-            VoteType::Yes => vote.yes += 1,
-            VoteType::No => vote.no += 1,
+            VoteType::Yes => {
+                // adding the player to voted players
+                team.leave_voted_players.push(*ctx.accounts.signer.key);
+                // incrementing yes votes
+                team.yes_votes += 1;
+            }
+            VoteType::No => {
+                // adding the player to voted players
+                team.voted_players.push(*ctx.accounts.signer.key);
+            }
         }
 
-        msg!("Vote casted");
+        if team.leave_votes > 2 {
+            // if yes votes are more than half of the team members
+            // remove the tournament from the team's active tournament
+            team.active_tournament = Pubkey::default();
+            // reset yes votes
+            team.leave_votes = 0;
+            // reset voted players
+            team.leave_voted_players = vec![];
+
+            msg!(
+                "{} is successfully left the tournament {}",
+                team.name,
+                team.name
+            );
+        }
 
         Ok(())
     }
@@ -304,6 +375,34 @@ pub struct LeaveTeam<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// vote for tournament instruction
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct VoteForTournament<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    // #[account(mut)]
+    // pub tournament_account: Account<'info, TeamAccount>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// vote for leaving the tournament
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct LeaveTournament<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // Team account struct
 #[account]
 pub struct TeamAccount {
@@ -312,6 +411,13 @@ pub struct TeamAccount {
     pub name: String,
     pub members: Vec<Pubkey>,
     pub id: u64,
+    pub is_initialized: bool,
+    pub yes_votes: u8,
+    pub voted_players: Vec<Pubkey>,
+    pub active_tournament: Pubkey,
+    pub voting_result: bool,
+    pub leave_votes: u8,
+    pub leave_voted_players: Vec<Pubkey>,
 }
 
 impl TeamAccount {
@@ -320,58 +426,16 @@ impl TeamAccount {
     + 1 // bump 
     + 32 // name
     + 5 * 32 // members vector 
-    + 8; // id
+    + 8 // id
+    + 1 // is_initialized
+    + 1 // yes_votes
+    + 5 * 32 // voted_players vector
+    + 32 // active_tournament
+    + 1; // voting_result
 }
 
 // ----------------------------------------------
 // voting related instructions and accounts
-
-// derive macro for initialize vote instruction
-#[derive(Accounts)]
-#[instruction(_team_account_address: Pubkey)]
-pub struct InitializeVote<'info> {
-    #[account(init, payer = signer, space= VoteAccount::LEN, seeds=[_team_account_address.as_ref()], bump)]
-    pub vote_account: Account<'info, VoteAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// derive macro for vote instruction
-#[derive(Accounts)]
-#[instruction(_team_account_address: Pubkey)]
-pub struct Vote<'info> {
-    #[account(mut, seeds=[_team_account_address.as_ref()], bump = vote_account.bump)]
-    pub vote_account: Account<'info, VoteAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// vote account struct
-#[account]
-pub struct VoteAccount {
-    pub team: Pubkey,
-    pub bump: u8,
-    pub yes: u8,
-    pub no: u8,
-    pub id: u8,
-    pub voters: Vec<Pubkey>,
-}
-
-impl VoteAccount {
-    const LEN: usize = 8 // discriminator 
-    + 32 // team pubkey 
-    + 1 // bump 
-    + 1 // votes yes
-    + 1 // votes no
-    + 1 // id
-    + 5 * 32; // voters vector
-}
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum VoteType {
@@ -395,10 +459,10 @@ pub enum ErrorCode {
     MemberAlreadyInTeamError,
     #[msg("Captain cannot leave the team unless he transfers the captain role to another member")]
     CaptainCannotLeaveTeamError,
-    #[msg("You have already voted")]
+    #[msg("Member is already voted for the tournament")]
     AlreadyVotedError,
-    #[msg("Voting is closed for this team")]
-    VoteClosedError,
-    #[msg("Invalid vote")]
-    InvalidVoteError,
+    #[msg("The team has an active tournament and cannot vote for another tournament, leave the current one first")]
+    AlreadyActiveTournamentError,
+    #[msg("The team has no active tournament")]
+    NoActiveTournamentError,
 }
