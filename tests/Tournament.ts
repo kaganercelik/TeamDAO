@@ -64,7 +64,8 @@ describe("Voting tests", () => {
 	});
 
 	xit("should set tournament address successfully", async () => {
-		// remember it only sets the tournament address if the yes votes are more than 50%, in this case teams will only have 5 members so 3 yes votes will be enough
+		// remember it only sets the tournament address if the yes votes are more than 50%,
+		// in this case teams will only have 5 members so 3 yes votes will be enough
 		for (let i = 0; i < 3; i++) {
 			await program.methods
 				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
@@ -119,12 +120,14 @@ describe("Voting tests", () => {
 	});
 
 	xit("should not let vote for another tournament if there is still an active one", async () => {
+		// voting for a tournament and starting the voting
 		await program.methods
 			.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
 			.rpc();
 
 		let anotherTournament = anchor.web3.Keypair.generate();
 		try {
+			// trying to vote for another tournament
 			await program.methods
 				.voteForTournament(teamName, uid, anotherTournament.publicKey, {
 					yes: {},
@@ -137,7 +140,6 @@ describe("Voting tests", () => {
 				.signers([alice])
 				.rpc();
 		} catch (err) {
-			console.log("here is the error");
 			assert.equal(
 				err.error.errorMessage,
 				"The team has an active tournament and cannot vote for another tournament, leave the current one first"
@@ -146,7 +148,7 @@ describe("Voting tests", () => {
 		}
 	});
 
-	xit("should not let anybody that is not in the team vote", async () => {
+	xit("should not let anybody that is not in the team to vote", async () => {
 		let anotherUser = anchor.web3.Keypair.generate();
 		try {
 			await program.methods

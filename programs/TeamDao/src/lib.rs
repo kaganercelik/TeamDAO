@@ -258,16 +258,16 @@ pub mod team_dao {
     ) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
 
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
         // checking if the team has an active tournament
         require!(
             team.active_tournament != Pubkey::default(),
             ErrorCode::NoActiveTournamentError
+        );
+
+        // checking if the signer is in the team
+        require!(
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
         );
 
         // checking if the tournament is not already voted
@@ -282,7 +282,7 @@ pub mod team_dao {
                 // adding the player to voted players
                 team.leave_voted_players.push(*ctx.accounts.signer.key);
                 // incrementing yes votes
-                team.yes_votes += 1;
+                team.leave_votes += 1;
             }
             VoteType::No => {
                 // adding the player to voted players
