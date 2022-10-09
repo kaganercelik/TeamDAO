@@ -27,6 +27,7 @@ pub mod team_dao {
         team.id = team_id;
         team.members.push(*ctx.accounts.signer.key);
         team.can_join_tournament = false;
+        team.distribution_voting_result = false;
 
         msg!("Team created");
         msg!("Team name: {}", team.name);
@@ -337,12 +338,6 @@ pub mod team_dao {
             ErrorCode::NoActiveTournamentError
         );
 
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
         // checking if the captain is the signer
         require!(
             team.captain == *ctx.accounts.signer.key,
@@ -405,6 +400,20 @@ pub mod team_dao {
             }
         }
 
+        // checking if the vote is successful
+        if team.distribution_voted_players.len() > 2 && team.distribution_yes_votes > 2 {
+            // if yes votes are more than half of the team members
+            // add the tournament to the team's active tournament
+            team.distribution_voting_result = true;
+        }
+
+        // checking if the vote is failed
+        if team.distribution_voted_players.len() > 2 && team.distribution_yes_votes < 3 {
+            // if yes votes are more than half of the team members
+            // add the tournament to the team's active tournament
+            team.distribution_voting_result = false;
+        }
+
         Ok(())
     }
     // two functions above will basically be used to vote for the distribution of the rewards
@@ -427,18 +436,6 @@ pub mod team_dao {
         require!(
             team.active_tournament != Pubkey::default(),
             ErrorCode::NoActiveTournamentError
-        );
-
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // checking if the tournament is not already voted
-        require!(
-            !team.voted_players.contains(ctx.accounts.signer.key),
-            ErrorCode::AlreadyVotedError
         );
 
         // checking if voting result is yes, all players voted for tournament and distribution
@@ -602,6 +599,7 @@ pub struct TeamAccount {
     pub distribution_percentages: Vec<u8>,
     pub distribution_yes_votes: u8,
     pub distribution_voted_players: Vec<Pubkey>,
+    pub distribution_voting_result: bool,
     pub can_join_tournament: bool,
 }
 
@@ -620,8 +618,9 @@ impl TeamAccount {
     + 1 * 5 // reward_distribution_percentages vector
     + 1 // distribution_yes_votes
     + 5 * 32 // distribution_voted_players vector
+    + 1 // distribution_voting_result
     + 1; // can_join_tournament
-} // 603 bytes < 10k
+} // 604 bytes < 10k
 
 // ----------------------------------------------
 // voting related instructions and accounts
