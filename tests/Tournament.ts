@@ -47,7 +47,7 @@ describe("Voting tests", () => {
 		}
 	});
 
-	xit("should vote yes successfully", async () => {
+	it("should vote yes successfully", async () => {
 		await program.methods
 			.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
 			.rpc();
@@ -63,10 +63,11 @@ describe("Voting tests", () => {
 		assert.equal(teamDetails.yesVotes, 1);
 	});
 
-	xit("should set tournament address successfully", async () => {
+	it("should set tournament address successfully", async () => {
 		// remember it only sets the tournament address if the yes votes are more than 50%,
 		// in this case teams will only have 5 members so 3 yes votes will be enough
-		for (let i = 0; i < 3; i++) {
+		// since we voted for captain already, we need to vote for 2 more members
+		for (let i = 0; i < 2; i++) {
 			await program.methods
 				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
 				.accounts({
@@ -89,11 +90,7 @@ describe("Voting tests", () => {
 		assert.equal(teamDetails.votingResult, true);
 	});
 
-	xit("should not increase yes votes", async () => {
-		await program.methods
-			.voteForTournament(teamName, uid, tournament.publicKey, { no: {} })
-			.rpc();
-
+	it("should not increase yes votes", async () => {
 		const teamDetails = await program.account.teamAccount.fetch(
 			teamAccountAddr
 		);
@@ -101,30 +98,7 @@ describe("Voting tests", () => {
 		assert.equal(teamDetails.yesVotes, 0);
 	});
 
-	xit("should not let a player vote twice", async () => {
-		await program.methods
-			.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-			.rpc();
-
-		try {
-			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-				.rpc();
-		} catch (err) {
-			assert.equal(
-				err.error.errorMessage,
-				"Member is already voted for the tournament"
-			);
-			assert.equal(err.error.errorCode.code, "AlreadyVotedError");
-		}
-	});
-
-	xit("should not let vote for another tournament if there is still an active one", async () => {
-		// voting for a tournament and starting the voting
-		await program.methods
-			.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-			.rpc();
-
+	it("should not let vote for another tournament if there is still an active one", async () => {
 		let anotherTournament = anchor.web3.Keypair.generate();
 		try {
 			// trying to vote for another tournament
@@ -148,46 +122,7 @@ describe("Voting tests", () => {
 		}
 	});
 
-	xit("should not let anybody that is not in the team to vote", async () => {
-		let anotherUser = anchor.web3.Keypair.generate();
-		try {
-			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-				.accounts({
-					teamAccount: teamAccountAddr,
-					signer: anotherUser.publicKey,
-					systemProgram: anchor.web3.SystemProgram.programId,
-				})
-				.signers([anotherUser])
-				.rpc();
-		} catch (err) {
-			assert.equal(err.error.errorMessage, "Member is not in the team");
-			assert.equal(err.error.errorCode.code, "MemberNotInTeamError");
-		}
-	});
-
-	xit("should let a team leave the tournament", async () => {
-		// signing for a tournament first
-		// signing for a tournament requires 3 yes votes, so we will sign for 3 members
-		// remember more than 3 yes votes sends an error because the team already has an active tournament
-		for (let i = 0; i < 3; i++) {
-			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-				.accounts({
-					teamAccount: teamAccountAddr,
-					signer: team[i].publicKey,
-					systemProgram: anchor.web3.SystemProgram.programId,
-				})
-				.signers([team[i]])
-				.rpc();
-		}
-		// checking if the tournament address is set
-		let teamDetails = await program.account.teamAccount.fetch(teamAccountAddr);
-		assert.equal(
-			teamDetails.activeTournament.toBase58(),
-			tournament.publicKey.toBase58()
-		);
-
+	it("should let a team leave the tournament", async () => {
 		// leaving the tournament
 		// still, 3 votes for leaving the tournament is enough because of majority reasons and more than 3 votes will send an error
 		for (let i = 0; i < 3; i++) {
@@ -202,7 +137,7 @@ describe("Voting tests", () => {
 				.rpc();
 		}
 
-		teamDetails = await program.account.teamAccount.fetch(teamAccountAddr);
+		let teamDetails = await program.account.teamAccount.fetch(teamAccountAddr);
 		assert.equal(
 			teamDetails.activeTournament.toBase58(),
 			"11111111111111111111111111111111" // Pubkey::default()

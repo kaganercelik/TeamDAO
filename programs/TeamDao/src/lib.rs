@@ -302,6 +302,12 @@ pub mod team_dao {
             team.leave_votes = 0;
             // reset voted players
             team.leave_voted_players = vec![];
+            // reset voted_players
+            team.voted_players = vec![];
+            // reset voting result
+            team.voting_result = false;
+            // reset yes votes
+            team.yes_votes = 0;
 
             msg!(
                 "{} is successfully left the tournament {}",
