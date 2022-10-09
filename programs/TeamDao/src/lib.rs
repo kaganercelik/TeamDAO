@@ -26,6 +26,7 @@ pub mod team_dao {
         team.captain = *ctx.accounts.signer.key;
         team.id = team_id;
         team.members.push(*ctx.accounts.signer.key);
+        team.can_join_tournament = false;
 
         msg!("Team created");
         msg!("Team name: {}", team.name);
@@ -195,6 +196,9 @@ pub mod team_dao {
     ) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
 
+        // checking if the team has enough players to join a tournament
+        require!(team.members.len() >= 5, ErrorCode::InsufficientPlayersError);
+
         // checking if the team still has an active tournament
         require!(
             team.active_tournament == Pubkey::default(),
@@ -308,6 +312,138 @@ pub mod team_dao {
 
         Ok(())
     }
+
+    // init percentage proposal
+    // @param _team_name : name of the team, used in pda
+    // @param _team_id : id of the team, used in pda
+    pub fn init_percentage_proposal(
+        ctx: Context<InitPercentageProposal>,
+        _team_name: String,
+        _team_id: u64,
+        percentages: Vec<u8>,
+    ) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+        // sum of the percentages vector
+        let sum: u8 = percentages.iter().sum();
+        // checking if the sum of percentages is equal to 100
+        require!(sum == 100, ErrorCode::InvalidPercentageError);
+
+        // checking if the team has an active tournament
+        require!(
+            team.active_tournament != Pubkey::default(),
+            ErrorCode::NoActiveTournamentError
+        );
+
+        // checking if the signer is in the team
+        require!(
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
+        );
+
+        // checking if the captain is the signer
+        require!(
+            team.captain == *ctx.accounts.signer.key,
+            ErrorCode::NotCaptainError
+        );
+
+        // setting the percentage proposal
+        team.distribution_percentages = percentages;
+
+        msg!(
+            "{} is successfully proposed a percentage {:?}",
+            team.name,
+            team.distribution_percentages
+        );
+
+        Ok(())
+    }
+
+    // reward distribution proposal handler
+    // @param _team_name : name of the team, used in pda
+    // @param _team_id : id of the team, used in pda
+    pub fn distribution_proposal_handler(
+        ctx: Context<DistributionProposalHandler>,
+        _team_name: String,
+        _team_id: u64,
+        vote_type: VoteType,
+    ) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+
+        // checking if the team has an active tournament
+        require!(
+            team.active_tournament != Pubkey::default(),
+            ErrorCode::NoActiveTournamentError
+        );
+
+        // checking if the signer is in the team
+        require!(
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
+        );
+
+        // checking if the tournament is not already voted
+        require!(
+            !team.voted_players.contains(ctx.accounts.signer.key),
+            ErrorCode::AlreadyVotedError
+        );
+
+        // checking the vote type
+        match vote_type {
+            VoteType::Yes => {
+                // adding the player to voted players
+                team.distribution_voted_players
+                    .push(*ctx.accounts.signer.key);
+                // incrementing yes votes
+                team.distribution_yes_votes += 1;
+            }
+            VoteType::No => {
+                // adding the player to voted players
+                team.voted_players.push(*ctx.accounts.signer.key);
+            }
+        }
+
+        Ok(())
+    }
+    // two functions above will basically be used to vote for the distribution of the rewards
+    // the function below will use the logic to decide if a team can join the tournament or not
+
+    // can join the tournament, we will use this function to decide if a team can join the tournament or not
+    // @param _team_name : name of the team, used in pda
+    // @param _team_id : id of the team, used in pda
+    pub fn can_join_tournament(
+        ctx: Context<CanJoinTournament>,
+        _team_name: String,
+        _team_id: u64,
+    ) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+
+        // checking if the team has an active tournament
+        require!(
+            team.active_tournament != Pubkey::default(),
+            ErrorCode::NoActiveTournamentError
+        );
+
+        // checking if the signer is in the team
+        require!(
+            team.members.contains(ctx.accounts.signer.key),
+            ErrorCode::MemberNotInTeamError
+        );
+
+        // checking if the tournament is not already voted
+        require!(
+            !team.voted_players.contains(ctx.accounts.signer.key),
+            ErrorCode::AlreadyVotedError
+        );
+
+        // checking if voting result is yes, all players voted for tournament and distribution
+        if team.voting_result == true && team.distribution_yes_votes > 2 {
+            team.can_join_tournament = true;
+        } else {
+            team.can_join_tournament = false;
+        }
+
+        Ok(())
+    }
 }
 
 // derive macros for member instructions
@@ -403,6 +539,45 @@ pub struct LeaveTournament<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// init percentage proposal
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct InitPercentageProposal<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// vote for distribution
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct DistributionProposalHandler<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// can join tournament
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct CanJoinTournament<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // Team account struct
 #[account]
 pub struct TeamAccount {
@@ -418,6 +593,10 @@ pub struct TeamAccount {
     pub voting_result: bool,
     pub leave_votes: u8,
     pub leave_voted_players: Vec<Pubkey>,
+    pub distribution_percentages: Vec<u8>,
+    pub distribution_yes_votes: u8,
+    pub distribution_voted_players: Vec<Pubkey>,
+    pub can_join_tournament: bool,
 }
 
 impl TeamAccount {
@@ -431,8 +610,12 @@ impl TeamAccount {
     + 1 // yes_votes
     + 5 * 32 // voted_players vector
     + 32 // active_tournament
-    + 1; // voting_result
-}
+    + 1 // voting_result
+    + 1 * 5 // reward_distribution_percentages vector
+    + 1 // distribution_yes_votes
+    + 5 * 32 // distribution_voted_players vector
+    + 1; // can_join_tournament
+} // 603 bytes
 
 // ----------------------------------------------
 // voting related instructions and accounts
@@ -465,4 +648,8 @@ pub enum ErrorCode {
     AlreadyActiveTournamentError,
     #[msg("The team has no active tournament")]
     NoActiveTournamentError,
+    #[msg("A team must contain 5 players to join a tournament")]
+    InsufficientPlayersError,
+    #[msg("The sum of percentages must be equal to 100")]
+    InvalidPercentageError,
 }

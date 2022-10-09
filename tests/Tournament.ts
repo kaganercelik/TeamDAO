@@ -165,4 +165,47 @@ describe("Voting tests", () => {
 			assert.equal(err.error.errorCode.code, "MemberNotInTeamError");
 		}
 	});
+
+	xit("should let a team leave the tournament", async () => {
+		// signing for a tournament first
+		// signing for a tournament requires 3 yes votes, so we will sign for 3 members
+		// remember more than 3 yes votes sends an error because the team already has an active tournament
+		for (let i = 0; i < 3; i++) {
+			await program.methods
+				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
+				.accounts({
+					teamAccount: teamAccountAddr,
+					signer: team[i].publicKey,
+					systemProgram: anchor.web3.SystemProgram.programId,
+				})
+				.signers([team[i]])
+				.rpc();
+		}
+		// checking if the tournament address is set
+		let teamDetails = await program.account.teamAccount.fetch(teamAccountAddr);
+		assert.equal(
+			teamDetails.activeTournament.toBase58(),
+			tournament.publicKey.toBase58()
+		);
+
+		// leaving the tournament
+		// still, 3 votes for leaving the tournament is enough because of majority reasons and more than 3 votes will send an error
+		for (let i = 0; i < 3; i++) {
+			await program.methods
+				.leaveTournament(teamName, uid, { yes: {} })
+				.accounts({
+					teamAccount: teamAccountAddr,
+					signer: team[i].publicKey,
+					systemProgram: anchor.web3.SystemProgram.programId,
+				})
+				.signers([team[i]])
+				.rpc();
+		}
+
+		teamDetails = await program.account.teamAccount.fetch(teamAccountAddr);
+		assert.equal(
+			teamDetails.activeTournament.toBase58(),
+			"11111111111111111111111111111111" // Pubkey::default()
+		);
+	}); // testing for errors seemed unnecessary because almost the same errors are tested in the previous tests
 });
