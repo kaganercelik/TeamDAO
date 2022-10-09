@@ -196,9 +196,6 @@ pub mod team_dao {
     ) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
 
-        // checking if the team has enough players to join a tournament
-        require!(team.members.len() >= 5, ErrorCode::InsufficientPlayersError);
-
         // checking if the team still has an active tournament
         require!(
             team.active_tournament == Pubkey::default(),
@@ -423,6 +420,9 @@ pub mod team_dao {
     ) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
 
+        // checking if the team has 5 players to join the tournament
+        require!(team.members.len() == 5, ErrorCode::NotEnoughPlayersError);
+
         // checking if the team has an active tournament
         require!(
             team.active_tournament != Pubkey::default(),
@@ -621,7 +621,7 @@ impl TeamAccount {
     + 1 // distribution_yes_votes
     + 5 * 32 // distribution_voted_players vector
     + 1; // can_join_tournament
-} // 603 bytes
+} // 603 bytes < 10k
 
 // ----------------------------------------------
 // voting related instructions and accounts
@@ -655,7 +655,7 @@ pub enum ErrorCode {
     #[msg("The team has no active tournament")]
     NoActiveTournamentError,
     #[msg("A team must contain 5 players to join a tournament")]
-    InsufficientPlayersError,
+    NotEnoughPlayersError,
     #[msg("The sum of percentages must be equal to 100")]
     InvalidPercentageError,
 }

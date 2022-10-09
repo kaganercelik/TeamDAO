@@ -5,7 +5,7 @@ import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
 
-describe("Voting tests", () => {
+xdescribe("Voting tests", () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);

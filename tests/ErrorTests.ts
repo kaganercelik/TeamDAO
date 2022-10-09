@@ -42,7 +42,8 @@ describe("Error tests", () => {
 		);
 
 		// adding team members
-		for (let i = 0; i < team.length; i++) {
+		// only 4 member added to the team because i ll test  the last one for captain error
+		for (let i = 0; i < team.length - 1; i++) {
 			await program.methods.addMember(teamName, uid, team[i].publicKey).rpc();
 		}
 	});
@@ -76,6 +77,26 @@ describe("Error tests", () => {
 		} catch (err) {
 			assert.equal(err.error.errorMessage, "Member is not in the team");
 			assert.equal(err.error.errorCode.code, "MemberNotInTeamError");
+		}
+	});
+
+	it("should not let anyone else other than captain add member", async () => {
+		try {
+			await program.methods
+				.addMember(teamName, uid, dan.publicKey)
+				.accounts({
+					teamAccount: teamAccountAddr,
+					signer: alice.publicKey,
+					systemProgram: anchor.web3.SystemProgram.programId,
+				})
+				.signers([alice])
+				.rpc();
+		} catch (err) {
+			assert.equal(
+				err.error.errorMessage,
+				"Only captain can call this function"
+			);
+			assert.equal(err.error.errorCode.code, "NotCaptainError");
 		}
 	});
 });
