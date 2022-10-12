@@ -16,17 +16,17 @@ describe("Distribution tests", () => {
 	const bob = anchor.web3.Keypair.generate();
 	const carol = anchor.web3.Keypair.generate();
 	const dan = anchor.web3.Keypair.generate();
+	let team = [alice, bob, carol, dan];
 
 	let tournament = anchor.web3.Keypair.generate();
 
 	const program = anchor.workspace.TeamDao as Program<TeamDao>;
 
-	let teamName = "Test Team 2";
+	let teamName = "Test Team 4";
 	let uid = new anchor.BN(1234567);
 	let teamAccountAddr;
 
 	// the team addresses array
-	let team = [alice, bob, carol, dan];
 
 	let teamPda, teamBump;
 
@@ -59,6 +59,13 @@ describe("Distribution tests", () => {
 				.signers([team[i]])
 				.rpc();
 		}
+
+		await program.provider.connection.confirmTransaction(
+			await program.provider.connection.requestAirdrop(
+				alice.publicKey,
+				anchor.web3.LAMPORTS_PER_SOL * 101
+			)
+		);
 	});
 
 	it("should init percentage proposal successfully", async () => {
@@ -106,5 +113,102 @@ describe("Distribution tests", () => {
 		);
 
 		assert.equal(canJoinTournament, true);
+	});
+
+	it("should distribute prizes successfully", async () => {
+		let tournamentPrize = anchor.web3.LAMPORTS_PER_SOL * 100;
+		let reward;
+
+		// airdrop for teamAccount
+		await program.provider.connection.confirmTransaction(
+			await program.provider.connection.requestAirdrop(
+				teamAccountAddr,
+				anchor.web3.LAMPORTS_PER_SOL * 101
+			)
+		);
+
+		// get the balance of teamAccount
+		let teamAccountBalance = await program.provider.connection.getBalance(
+			teamAccountAddr
+		);
+
+		// air drop for user
+		await program.provider.connection.confirmTransaction(
+			await program.provider.connection.requestAirdrop(
+				user.publicKey,
+				anchor.web3.LAMPORTS_PER_SOL * 10
+			)
+		);
+
+		// getting the distribution percentage of team[i] from program
+		let { distributionPercentages: distPerc } =
+			await program.account.teamAccount.fetch(teamAccountAddr);
+
+		// get the balance of user
+		let userBalance =
+			(await program.provider.connection.getBalance(user.publicKey)) /
+			anchor.web3.LAMPORTS_PER_SOL;
+
+		// calculating the reward for user
+		reward = (tournamentPrize * distPerc[0]) / 100;
+
+		await program.methods
+			.claimReward(teamName, uid, new anchor.BN(reward))
+			.accounts({
+				teamAccount: teamAccountAddr,
+				from: teamAccountAddr,
+				to: user.publicKey,
+				user: user.publicKey,
+				systemProgram: anchor.web3.SystemProgram.programId,
+			})
+			.rpc()
+			.catch((err) => console.log(err));
+
+		// get the balance of user after transaction
+		let userBalanceAfter =
+			(await program.provider.connection.getBalance(user.publicKey)) /
+			anchor.web3.LAMPORTS_PER_SOL;
+
+		let result = Math.ceil(userBalanceAfter - userBalance);
+
+		// assert equal user balances
+		assert.equal(result, reward / anchor.web3.LAMPORTS_PER_SOL);
+
+		// airdrop for team
+		for (let i = 0; i < team.length; i++) {
+			await program.provider.connection.confirmTransaction(
+				await program.provider.connection.requestAirdrop(
+					team[i].publicKey,
+					anchor.web3.LAMPORTS_PER_SOL * 10
+				)
+			);
+
+			// get the balance of team[i]
+			let teamMemberBalance = await program.provider.connection.getBalance(
+				team[i].publicKey
+			);
+
+			reward = (tournamentPrize * distPerc[i + 1]) / 100; // i + 1 because the first element of the array is user account that i used above
+
+			// claim the reward for alice
+			await program.methods
+				.claimReward(teamName, uid, new anchor.BN(reward))
+				.accounts({
+					teamAccount: teamAccountAddr,
+					from: teamAccountAddr,
+					to: team[i].publicKey,
+					user: team[i].publicKey,
+					systemProgram: anchor.web3.SystemProgram.programId,
+				})
+				.signers([team[i]])
+				.rpc()
+				.catch((err) => console.log(err));
+
+			// get the balance of team[i] after claiming the reward
+			let teamMemberBalanceAfterTx =
+				await program.provider.connection.getBalance(team[i].publicKey);
+
+			assert.equal(teamMemberBalanceAfterTx, teamMemberBalance + reward);
+		}
 	});
 });

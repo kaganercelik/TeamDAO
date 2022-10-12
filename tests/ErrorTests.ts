@@ -5,7 +5,7 @@ import { MethodsBuilder } from "@project-serum/anchor/dist/cjs/program/namespace
 import { assert } from "chai";
 import { TeamDao } from "../target/types/team_dao";
 
-xdescribe("Error tests", () => {
+describe("Error tests", () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);
@@ -21,7 +21,7 @@ xdescribe("Error tests", () => {
 
 	const program = anchor.workspace.TeamDao as Program<TeamDao>;
 
-	let teamName = "Test Team 4";
+	let teamName = "Test Team 3";
 	let uid = new anchor.BN(1234567);
 	let teamAccountAddr;
 
