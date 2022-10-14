@@ -724,7 +724,7 @@ impl TeamAccount {
     + 5 * 32 // distribution_voted_players vector
     + 1 // distribution_voting_result
     + 1; // can_join_tournament
-} // 604 bytes < 10k
+} // 612 bytes < 10k
 
 // ----------------------------------------------
 // voting related instructions and accounts
