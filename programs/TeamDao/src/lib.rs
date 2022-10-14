@@ -184,6 +184,38 @@ pub mod team_dao {
         Ok(())
     }
 
+    // init tournament
+    // @param tournament_name: name of the tournament, used in pda
+    // @param tournament_id: id of the tournament, used in pda
+    // @param tournament_prize: prize of the tournament
+    pub fn init_tournament(
+        ctx: Context<InitTournament>,
+        _team_name: String,
+        _team_id: u64,
+        tournament_address: Pubkey,
+        tournament_prize: u64,
+    ) -> Result<()> {
+        let team = &mut ctx.accounts.team_account;
+
+        // check if the signer is captain
+        require!(
+            team.captain == *ctx.accounts.signer.key,
+            ErrorCode::NotCaptainError
+        );
+
+        // checking if the team has already an active tournament
+        require!(
+            team.active_tournament == Pubkey::default(),
+            ErrorCode::AlreadyActiveTournamentError
+        );
+
+        // assigning required parameters to the tournament
+        team.active_tournament = tournament_address;
+        team.prize = tournament_prize;
+
+        Ok(())
+    }
+
     // vote for tournament
     // @param _team_name : name of the team, used in pda
     // @param _team_id : id of the team, used in pda
@@ -192,15 +224,14 @@ pub mod team_dao {
         ctx: Context<VoteForTournament>,
         _team_name: String,
         _team_id: u64,
-        tournament_address: Pubkey,
         vote_type: VoteType,
     ) -> Result<()> {
         let team = &mut ctx.accounts.team_account;
 
         // checking if the team still has an active tournament
         require!(
-            team.active_tournament == Pubkey::default(),
-            ErrorCode::AlreadyActiveTournamentError
+            team.active_tournament != Pubkey::default(),
+            ErrorCode::NoActiveTournamentError
         );
         // checking if the signer is in the team
         require!(
@@ -231,7 +262,6 @@ pub mod team_dao {
         if team.yes_votes > 2 {
             // if yes votes are more than half of the team members
             // add the tournament to the team's active tournament
-            team.active_tournament = tournament_address;
             // reset yes votes
             team.yes_votes = 0;
             // reset voted players
@@ -465,6 +495,21 @@ pub mod team_dao {
             ErrorCode::MemberNotInTeamError
         );
 
+        // get the index of to account
+        let index = team
+            .members
+            .iter()
+            .position(|&r| r == *ctx.accounts.to.key)
+            .unwrap();
+
+        let expected_max_reward = team.prize * team.distribution_percentages[index] as u64 / 100;
+
+        // checking if the index matches the percentage of the prize and reward distribution
+        require!(
+            reward <= expected_max_reward,
+            ErrorCode::InvalidPercentageError
+        );
+
         let from = ctx.accounts.from.to_account_info();
         let to = ctx.accounts.to.to_account_info();
 
@@ -558,6 +603,19 @@ pub struct LeaveTeam<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// init tournament instruction
+#[derive(Accounts)]
+#[instruction(_team_name: String, _team_id: u64)]
+pub struct InitTournament<'info> {
+    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
+    pub team_account: Account<'info, TeamAccount>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // vote for tournament instruction
 #[derive(Accounts)]
 #[instruction(_team_name: String, _team_id: u64)]
@@ -637,6 +695,7 @@ pub struct TeamAccount {
     pub yes_votes: u8,
     pub voted_players: Vec<Pubkey>,
     pub active_tournament: Pubkey,
+    pub prize: u64,
     pub voting_result: bool,
     pub leave_votes: u8,
     pub leave_voted_players: Vec<Pubkey>,
@@ -658,6 +717,7 @@ impl TeamAccount {
     + 1 // yes_votes
     + 5 * 32 // voted_players vector
     + 32 // active_tournament
+    + 8 // tournament_prize
     + 1 // voting_result
     + 1 * 5 // reward_distribution_percentages vector
     + 1 // distribution_yes_votes
@@ -701,4 +761,6 @@ pub enum ErrorCode {
     NotEnoughPlayersError,
     #[msg("The sum of percentages must be equal to 100")]
     InvalidPercentageError,
+    #[msg("Invalid member for that reward")]
+    InvalidRewardError,
 }

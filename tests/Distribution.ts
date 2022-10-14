@@ -26,6 +26,8 @@ describe("Distribution tests", () => {
 	let uid = new anchor.BN(1234567);
 	let teamAccountAddr;
 
+	let tournamentPrize = anchor.web3.LAMPORTS_PER_SOL * 100;
+
 	// the team addresses array
 
 	let teamPda, teamBump;
@@ -46,11 +48,21 @@ describe("Distribution tests", () => {
 			await program.methods.addMember(teamName, uid, team[i].publicKey).rpc();
 		}
 
+		// initing tournament
+		await program.methods
+			.initTournament(
+				teamName,
+				uid,
+				tournament.publicKey,
+				new anchor.BN(tournamentPrize)
+			)
+			.rpc();
+
 		// creating tournament
 		// voting for 3 members
 		for (let i = 0; i < 3; i++) {
 			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
+				.voteForTournament(teamName, uid, { yes: {} })
 				.accounts({
 					teamAccount: teamAccountAddr,
 					signer: team[i].publicKey,
@@ -116,7 +128,6 @@ describe("Distribution tests", () => {
 	});
 
 	it("should distribute prizes successfully", async () => {
-		let tournamentPrize = anchor.web3.LAMPORTS_PER_SOL * 100;
 		let reward;
 
 		// airdrop for teamAccount

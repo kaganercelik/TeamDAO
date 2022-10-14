@@ -46,13 +46,16 @@ describe("Error tests", () => {
 		for (let i = 0; i < team.length - 1; i++) {
 			await program.methods.addMember(teamName, uid, team[i].publicKey).rpc();
 		}
+
+		// initing tournament
+		await program.methods
+			.initTournament(teamName, uid, tournament.publicKey, new anchor.BN(100))
+			.rpc();
 	});
 
 	it("should not let a player vote twice", async () => {
 		try {
-			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-				.rpc();
+			await program.methods.voteForTournament(teamName, uid, { yes: {} }).rpc();
 		} catch (err) {
 			assert.equal(
 				err.error.errorMessage,
@@ -66,7 +69,7 @@ describe("Error tests", () => {
 		let anotherUser = anchor.web3.Keypair.generate();
 		try {
 			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
+				.voteForTournament(teamName, uid, { yes: {} })
 				.accounts({
 					teamAccount: teamAccountAddr,
 					signer: anotherUser.publicKey,

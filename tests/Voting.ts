@@ -45,12 +45,15 @@ describe("Voting tests", () => {
 		for (let i = 0; i < team.length; i++) {
 			await program.methods.addMember(teamName, uid, team[i].publicKey).rpc();
 		}
+
+		// initing tournament
+		await program.methods
+			.initTournament(teamName, uid, tournament.publicKey, new anchor.BN(100))
+			.rpc();
 	});
 
 	it("should vote yes successfully", async () => {
-		await program.methods
-			.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
-			.rpc();
+		await program.methods.voteForTournament(teamName, uid, { yes: {} }).rpc();
 
 		const teamDetails = await program.account.teamAccount.fetch(
 			teamAccountAddr
@@ -69,7 +72,7 @@ describe("Voting tests", () => {
 		// since we voted for captain already, we need to vote for 2 more members
 		for (let i = 0; i < 2; i++) {
 			await program.methods
-				.voteForTournament(teamName, uid, tournament.publicKey, { yes: {} })
+				.voteForTournament(teamName, uid, { yes: {} })
 				.accounts({
 					teamAccount: teamAccountAddr,
 					signer: team[i].publicKey,
@@ -98,20 +101,17 @@ describe("Voting tests", () => {
 		assert.equal(teamDetails.yesVotes, 0);
 	});
 
-	it("should not let vote for another tournament if there is still an active one", async () => {
+	it("should not init another tournament if there is still an active one", async () => {
 		let anotherTournament = anchor.web3.Keypair.generate();
 		try {
 			// trying to vote for another tournament
 			await program.methods
-				.voteForTournament(teamName, uid, anotherTournament.publicKey, {
-					yes: {},
-				})
-				.accounts({
-					teamAccount: teamAccountAddr,
-					signer: alice.publicKey,
-					systemProgram: anchor.web3.SystemProgram.programId,
-				})
-				.signers([alice])
+				.initTournament(
+					teamName,
+					uid,
+					anotherTournament.publicKey,
+					new anchor.BN(100)
+				)
 				.rpc();
 		} catch (err) {
 			assert.equal(
