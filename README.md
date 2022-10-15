@@ -224,13 +224,19 @@ anchor test
     </p>
   </li>
   
-     <li>
-    <h3>Vote For Tournament</h3>
+   <li>
+    <h3>Init Percentage Proposal</h3>
     <p>
       <ul>
         <li>
-          
+          The sum of the percentages must be equal to 100
         </li>    
+        <li>
+          Only a captain can start a distribution percentage proposal
+        </li> 
+        <li>
+          There must be an active tournament in order to start a distribution percentage proposal
+        </li>      
     </ul>
     </p>
   </li>
