@@ -294,3 +294,11 @@ anchor test
   
  
 </ul>
+
+## TODO
+
+<ul>
+  <li>
+    Modulize the program in order to easily add and remove features in the future
+  </li>
+ </ul>
