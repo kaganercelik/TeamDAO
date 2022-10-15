@@ -75,3 +75,37 @@ anchor build
 ```bash
 anchor test
 ```
+
+## Features
+
+<ul>
+  <li>Create a team account</li>
+  <li>Add a member to the team</li>
+  <li>Remove a member from the team</li>
+  <li>Transfer captainship of the team</li>
+  <li>Leave team</li>
+  <li>Init a tournament proposal</li>
+  <li>Vote for the tournament proposal</li>
+  <li>Leave the tournament</li>
+  <li>Init distribution percentage proposal</li>
+  <li>Distribution percentage proposal handler</li>
+  <li>Can join tournament decider</li>
+  <li>Claim reward</li>
+</ul>
+
+
+## Rules
+
+<ul>
+  <li>
+    <h3>Create Team</h3>
+    <p>
+      <ul>
+        <li>
+          Sets the signer as the captain of the team and add the address as a member of the team.
+        </li>    
+    </ul>
+    </p>
+  </li>
+ 
+</ul>
