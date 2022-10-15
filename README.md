@@ -62,5 +62,5 @@ npm install
 anchor build
 anchor keys list
 ```
-  Take the output of program id. Copy and paste it into Anchor.toml <p style="background-color: #d1dcf0"> team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41" </p>
+  Take the output of program id. Copy and paste it into Anchor.toml ```html <p style="background-color: #d1dcf0"> team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41" </p>```
 
