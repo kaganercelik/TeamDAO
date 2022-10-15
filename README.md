@@ -124,5 +124,86 @@ anchor test
     </ul>
     </p>
   </li>
+  
+   <li>
+    <h3>Remove a member from the team</h3>
+    <p>
+      <ul>
+        <li>
+          There must be more than 1 member in the team to remove a member
+        </li>    
+        <li>
+          Only the captain of the team can remove a member
+        </li>
+        <li>
+          There must be a member in the team with the given pubkey parameter.
+        </li>
+    </ul>
+    </p>
+  </li>
+  
+   <li>
+    <h3>Transfer Captain</h3>
+    <p>
+      <ul>
+        <li>
+          Only the captain of the team can transfer captainship
+        </li>    
+         <li>
+          There must be a member with the given pubkey parameter in the team
+        </li>
+    </ul>
+    </p>
+  </li>  
+
+  <li>
+    <h3>Leave Team</h3>
+    <p>
+      <ul>
+        <li>
+          If the captain wants to leave the team it transfer the captainship to the member after captain
+        </li>    
+        <li>
+          If team has only 1 member in the team it resets the team account
+        </li>
+    </ul>
+    </p>
+  </li>
+
+   <li>
+    <h3>Init tournament</h3>
+    <p>
+      <ul>
+        <li>
+          Only the captain of the team can init a tournament proposal
+        </li>   
+         <li>
+          If the team has already an active tournament proposal cant be started. In order to join another tournament the active tournament must be left first.
+        </li> 
+    </ul>
+    </p>
+  </li>
+  
+   <li>
+    <h3>Vote For Tournament</h3>
+    <p>
+      <ul>
+        <li>
+          
+        </li>    
+    </ul>
+    </p>
+  </li>
+  
+   <li>
+    <h3>Vote For Tournament</h3>
+    <p>
+      <ul>
+        <li>
+          
+        </li>    
+    </ul>
+    </p>
+  </li>
  
 </ul>
