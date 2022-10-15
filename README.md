@@ -287,7 +287,10 @@ anchor test
         </li>    
         <li>
           A member can withdraw more than its percentage.
-        </li>             
+        </li>  
+        <li>
+          Every member gets their own rewards personally.
+        </li>
     </ul>
     </p>
   </li>
