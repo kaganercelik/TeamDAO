@@ -107,5 +107,22 @@ anchor test
     </ul>
     </p>
   </li>
+  
+   <li>
+    <h3>Add member to the team</h3>
+    <p>
+      <ul>
+        <li>
+          A team can only have 5 players max.
+        </li>
+        <li>
+          Cant add dublicate pubkey
+        </li>
+        <li>
+          Only the captain of the team can add a member
+        </li>
+    </ul>
+    </p>
+  </li>
  
 </ul>
