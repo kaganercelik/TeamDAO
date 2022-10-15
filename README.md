@@ -28,7 +28,8 @@ solana-keygen new --outfile ~/my-solana-wallet/my-keypair.json
 ```
 
 <h3>Anchor.toml</h3>
-```Anchor.toml
+
+```
  [provider]
 cluster = "localnet"
 wallet = "~/my-solana-wallet/my-keypair.jsonn"
