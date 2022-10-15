@@ -241,5 +241,56 @@ anchor test
     </p>
   </li>
   
+   <li>
+    <h3>Distribution Proposal Handler</h3>
+    <p>
+      <ul>
+        <li>
+          There must be an active tournament.
+        </li>    
+        <li>
+            Only a member can vote for distribution proposal
+        </li> 
+        <li>
+          A member can only vote once.
+        </li>   
+         <li>
+          If the more than half of the team size votes yes. The fn sets the team.distribution_voting_result to true. Otherwise it's set to false.           
+        </li>
+    </ul>
+    </p>
+  </li>
+  
+   <li>
+    <h3>Can Join Tournament Decider</h3>
+    <p>
+      <ul>
+        <li>
+          A team must contain 5 members
+        </li>    
+        <li>
+          There must be an active tournament
+        </li> 
+        <li>
+          If the both voting result for tournament and voting result for distribution are true it will set the can_join_tournament parameter to true.
+        </li>      
+    </ul>
+    </p>
+  </li>
+  
+   <li>
+    <h3>Claim Reward</h3>
+    <p>
+      <ul>
+        <li>
+          Only a member of the team can call this function
+        </li>    
+        <li>
+          A member can withdraw more than its percentage.
+        </li>             
+    </ul>
+    </p>
+  </li>
+  
  
 </ul>
