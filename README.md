@@ -20,4 +20,14 @@ Team handler DAO on Solana  Blockchain using Anchor Framework
 git clone https://github.com/fuujazz/TeamDAO.git
 code TeamDao
 ```
+### Creating local wallet
 
+```bash
+mkdir ~/my-solana-wallet
+solana-keygen new --outfile ~/my-solana-wallet/my-keypair.json
+```
+
+```Anchor.toml
+ [provider]
+cluster = "localnet"
+wallet = "~/my-solana-wallet/my-keypair.jsonn"
