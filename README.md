@@ -50,3 +50,17 @@ solana-keygen verify <PUBKEY> ~/my-solana-wallet/my-keypair.json
 cluster = "localnet"
 wallet = "~/my-solana-wallet/my-keypair.jsonn"
 ```
+
+### Building
+
+```bash
+yarn
+npm install
+```
+
+```bash
+anchor build
+anchor keys list
+```
+  Take the output of program id. Copy and paste it into Anchor.toml <p style="background-color: #d1dcf0"> team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41" </p>
+
