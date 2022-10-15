@@ -64,3 +64,14 @@ anchor keys list
 ```
   Take the output of program id. Copy and paste it into Anchor.toml ```toml team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41" </p>``` and ```rust declare_id!("DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41");``` here.
 
+Build again
+
+```bash
+anchor build
+```
+
+### Test
+
+```bash
+anchor test
+```
