@@ -8,8 +8,16 @@ Team handler DAO on Solana  Blockchain using Anchor Framework
     <li>Solana installation -> <a href="https://docs.solana.com/cli/install-solana-cli-tools">here</a></li>
     <li>Yarn installation -> <a href="https://yarnpkg.com/getting-started/install">here</a></li>
     <li>Anchor installation -> <a href="https://www.anchor-lang.com/docs/installation">here</a>
+    <li>Git installation -> <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">here</a>
   </ul>
 
 
-## Installation
+## Getting Started
+
+### Cloning project
+
+```bash
+git clone https://github.com/fuujazz/TeamDAO.git
+code TeamDao
+```
 
