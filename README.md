@@ -26,6 +26,7 @@ code TeamDao
 mkdir ~/my-solana-wallet
 solana-keygen new --outfile ~/my-solana-wallet/my-keypair.json
 ```
+
 <h4>Verify keypair</h4>
 
 ```bash
@@ -33,6 +34,7 @@ solana-keygen pubkey ~/my-solana-wallet/my-keypair.json
 ```
 
 <h5>Output</h5>
+
 ```bash
 ErRr1caKzK8L8nn4xmEWtimYRiTCAZXjBtVphuZ5vMKy
 ```
