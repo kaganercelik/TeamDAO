@@ -189,13 +189,42 @@ anchor test
     <p>
       <ul>
         <li>
-          
+          There must be an active tournament in order to vote for the tournament
         </li>    
+        <li>
+          Only the members of the team can vote
+        </li>
+        <li>
+          A player can only vote once
+        </li>
+        <li>
+          If the yes votes gets more than the half of the team size(which is limited with 5) the fn sets the votin_result as true.
+        </li>
     </ul>
     </p>
   </li>
   
    <li>
+    <h3>Leave Tournament Voting</h3>
+    <p>
+      <ul>
+        <li>
+          There must be an active tournament in order to leave a tournament
+        </li>    
+         <li>
+          Only a member of the team can vote for leaving a tournament
+        </li>
+         <li>
+          A member can only vote once
+        </li>
+         <li>
+          If the yes votes for leaving the tournament gets more than the half of the team it resets the related parameters of the team account.
+        </li>
+    </ul>
+    </p>
+  </li>
+  
+     <li>
     <h3>Vote For Tournament</h3>
     <p>
       <ul>
@@ -205,5 +234,6 @@ anchor test
     </ul>
     </p>
   </li>
+  
  
 </ul>
