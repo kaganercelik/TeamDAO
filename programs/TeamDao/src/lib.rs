@@ -1,10 +1,30 @@
 use anchor_lang::prelude::*;
+use team::*;
 
-declare_id!("DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41");
+pub mod team;
+
+declare_id!("FuQvo5fjJ2A3P3DXgSWsYX8Hsawd2Qg7LwohfSKhEBpu");
 
 #[program]
 pub mod team_dao {
+
     use super::*;
+
+    use team::adding_member::{adding_member, AddMember};
+    use team::can_join::{can_join, CanJoinTournament};
+    use team::claiming_reward::{claiming_reward, ClaimReward};
+    use team::creating_team::{creating_team, CreateTeam};
+    use team::handle_distribute_proposal::{
+        handle_distribute_proposal, DistributionProposalHandler,
+    };
+    use team::initing_percentage_proposal::{initing_percentage_proposal, InitPercentageProposal};
+    use team::initing_tournament::{initing_tournament, InitTournament};
+    use team::leaving_team::{leaving_team, LeaveTeam};
+    use team::leaving_tournament::{leaving_tournament, LeaveTournament};
+    use team::removing_member::{removing_member, RemoveMember};
+    use team::transfering_captain::{transfering_captain, TransferCaptain};
+    use team::voting_for_tournament::{voting_for_tournament, VoteForTournament};
+    use team::VoteType;
 
     // ----------------------------------------------
 
@@ -14,26 +34,7 @@ pub mod team_dao {
     // @param team_name: name of the team, used to create pda
     // @param team_id: id of the team, used to create pda
     pub fn create_team(ctx: Context<CreateTeam>, team_name: String, team_id: u64) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        team.bump = *ctx
-            .bumps
-            .get("team_account")
-            .ok_or(ErrorCode::InvalidBumpSeeds)?;
-
-        // assigning required parameters to the team
-        team.name = team_name;
-        team.captain = *ctx.accounts.signer.key;
-        team.id = team_id;
-        team.members.push(*ctx.accounts.signer.key);
-        team.can_join_tournament = false;
-        team.distribution_voting_result = false;
-
-        msg!("Team created");
-        msg!("Team name: {}", team.name);
-        msg!("Team captain: {}", team.captain);
-
-        Ok(())
+        return creating_team(ctx, team_name, team_id);
     }
 
     // adding member to team
@@ -46,27 +47,7 @@ pub mod team_dao {
         _team_id: u64,
         member: Pubkey,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team already has 5 players if so, return error
-        require!(team.members.len() < 5, ErrorCode::TeamCapacityFullError);
-        // checking if the member is already in the team, if so, return error
-        require!(
-            !team.members.contains(&member),
-            ErrorCode::MemberAlreadyInTeamError
-        );
-        // checkin if the signer is the captain
-        require!(
-            team.captain == *ctx.accounts.signer.key,
-            ErrorCode::NotCaptainError
-        );
-
-        // adding member to the team
-        team.members.push(member);
-
-        msg!("{} is successfully added to the team {}", member, team.name);
-
-        Ok(())
+        return adding_member(ctx, _team_name, _team_id, member);
     }
 
     // removing member from team
@@ -79,34 +60,7 @@ pub mod team_dao {
         _team_id: u64,
         member: Pubkey,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team has at least 2 players if not, return error
-        require!(team.members.len() > 1, ErrorCode::TeamCapacityLowError);
-        // checkinf if the caller is the captain of the team
-        require!(team.captain != member, ErrorCode::NotCaptainError);
-        // checking it the member is in the team
-        require!(
-            team.members.contains(&member),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // checking if the member is in the team
-        require!(
-            team.members.contains(&member),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // removing member from team
-        team.members.retain(|&x| x != member);
-
-        msg!(
-            "{} is successfully removed from the team {}",
-            member,
-            team.name
-        );
-
-        Ok(())
+        return removing_member(ctx, _team_name, _team_id, member);
     }
 
     // transferring captain role to another member
@@ -119,29 +73,7 @@ pub mod team_dao {
         _team_id: u64,
         member: Pubkey,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the signer is captain
-        require!(
-            team.captain == *ctx.accounts.signer.key,
-            ErrorCode::NotCaptainError
-        );
-        // checking if the member is in the team
-        require!(
-            team.members.contains(&member),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // transferring captain role
-        team.captain = member;
-
-        msg!(
-            "Captain role is successfully transferred to {} in the team {}",
-            member,
-            team.name
-        );
-
-        Ok(())
+        return transfering_captain(ctx, _team_name, _team_id, member);
     }
 
     // ----------------------------------------------
@@ -151,37 +83,7 @@ pub mod team_dao {
     // @param team_name: name of the team, used in pda
     // @param team_id: id of the team, used in pda
     pub fn leave_team(ctx: Context<LeaveTeam>, _team_name: String, _team_id: u64) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        if team.members.len() == 1 {
-            // if the captain is the last member disband team
-            // delete team
-            team.name = "".to_string();
-            team.captain = Pubkey::default();
-            team.id = 0;
-            team.members = vec![];
-        }
-        if team.captain == *ctx.accounts.signer.key {
-            // transfer captain role to the second member in the team
-            team.captain = team.members[1];
-        }
-
-        // deleting the member from team
-        team.members.retain(|&x| x != *ctx.accounts.signer.key);
-
-        msg!(
-            "{} is successfully removed from the team {}",
-            ctx.accounts.signer.key,
-            team.name
-        );
-
-        Ok(())
+        return leaving_team(ctx, _team_name, _team_id);
     }
 
     // init tournament
@@ -195,88 +97,26 @@ pub mod team_dao {
         tournament_address: Pubkey,
         tournament_prize: u64,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // check if the signer is captain
-        require!(
-            team.captain == *ctx.accounts.signer.key,
-            ErrorCode::NotCaptainError
+        return initing_tournament(
+            ctx,
+            _team_name,
+            _team_id,
+            tournament_address,
+            tournament_prize,
         );
-
-        // checking if the team has already an active tournament
-        require!(
-            team.active_tournament == Pubkey::default(),
-            ErrorCode::AlreadyActiveTournamentError
-        );
-
-        // assigning required parameters to the tournament
-        team.active_tournament = tournament_address;
-        team.prize = tournament_prize;
-
-        Ok(())
     }
 
     // vote for tournament
     // @param _team_name : name of the team, used in pda
     // @param _team_id : id of the team, used in pda
-    // @param tournament_address : tournament address
+    // @param tournament_address : tournament address"
     pub fn vote_for_tournament(
         ctx: Context<VoteForTournament>,
         _team_name: String,
         _team_id: u64,
         vote_type: VoteType,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team still has an active tournament
-        require!(
-            team.active_tournament != Pubkey::default(),
-            ErrorCode::NoActiveTournamentError
-        );
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-        // checking if the tournament is not already voted
-        require!(
-            !team.voted_players.contains(ctx.accounts.signer.key),
-            ErrorCode::AlreadyVotedError
-        );
-
-        // checking vote type
-        match vote_type {
-            VoteType::Yes => {
-                // adding the player to voted players
-                team.voted_players.push(*ctx.accounts.signer.key);
-                // incrementing yes votes
-                team.yes_votes += 1;
-            }
-            VoteType::No => {
-                // adding the player to voted players
-                team.voted_players.push(*ctx.accounts.signer.key);
-            }
-        }
-
-        // checking if the vote is successful
-        if team.yes_votes > 2 {
-            // if yes votes are more than half of the team members
-            // add the tournament to the team's active tournament
-            // reset yes votes
-            team.yes_votes = 0;
-            // reset voted players
-            team.voted_players = vec![];
-
-            team.voting_result = true;
-        }
-
-        msg!(
-            "{} is successfully voted for the tournament {}",
-            team.name,
-            team.name
-        );
-
-        Ok(())
+        return voting_for_tournament(ctx, _team_name, _team_id, vote_type);
     }
 
     // leave a tournament
@@ -288,63 +128,7 @@ pub mod team_dao {
         _team_id: u64,
         vote_type: VoteType,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team has an active tournament
-        require!(
-            team.active_tournament != Pubkey::default(),
-            ErrorCode::NoActiveTournamentError
-        );
-
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // checking if the tournament is not already voted
-        require!(
-            !team.voted_players.contains(ctx.accounts.signer.key),
-            ErrorCode::AlreadyVotedError
-        );
-
-        // checking the vote type
-        match vote_type {
-            VoteType::Yes => {
-                // adding the player to voted players
-                team.leave_voted_players.push(*ctx.accounts.signer.key);
-                // incrementing yes votes
-                team.leave_votes += 1;
-            }
-            VoteType::No => {
-                // adding the player to voted players
-                team.voted_players.push(*ctx.accounts.signer.key);
-            }
-        }
-
-        if team.leave_votes > 2 {
-            // if yes votes are more than half of the team members
-            // remove the tournament from the team's active tournament
-            team.active_tournament = Pubkey::default();
-            // reset yes votes
-            team.leave_votes = 0;
-            // reset voted players
-            team.leave_voted_players = vec![];
-            // reset voted_players
-            team.voted_players = vec![];
-            // reset voting result
-            team.voting_result = false;
-            // reset yes votes
-            team.yes_votes = 0;
-
-            msg!(
-                "{} is successfully left the tournament {}",
-                team.name,
-                team.name
-            );
-        }
-
-        Ok(())
+        return leaving_tournament(ctx, _team_name, _team_id, vote_type);
     }
 
     // init percentage proposal
@@ -356,34 +140,7 @@ pub mod team_dao {
         _team_id: u64,
         percentages: Vec<u8>,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-        // sum of the percentages vector
-        let sum: u8 = percentages.iter().sum();
-        // checking if the sum of percentages is equal to 100
-        require!(sum == 100, ErrorCode::InvalidPercentageError);
-
-        // checking if the team has an active tournament
-        require!(
-            team.active_tournament != Pubkey::default(),
-            ErrorCode::NoActiveTournamentError
-        );
-
-        // checking if the captain is the signer
-        require!(
-            team.captain == *ctx.accounts.signer.key,
-            ErrorCode::NotCaptainError
-        );
-
-        // setting the percentage proposal
-        team.distribution_percentages = percentages;
-
-        msg!(
-            "{} is successfully proposed a percentage {:?}",
-            team.name,
-            team.distribution_percentages
-        );
-
-        Ok(())
+        return initing_percentage_proposal(ctx, _team_name, _team_id, percentages);
     }
 
     // reward distribution proposal handler
@@ -395,56 +152,7 @@ pub mod team_dao {
         _team_id: u64,
         vote_type: VoteType,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team has an active tournament
-        require!(
-            team.active_tournament != Pubkey::default(),
-            ErrorCode::NoActiveTournamentError
-        );
-
-        // checking if the signer is in the team
-        require!(
-            team.members.contains(ctx.accounts.signer.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // checking if the tournament is not already voted
-        require!(
-            !team.voted_players.contains(ctx.accounts.signer.key),
-            ErrorCode::AlreadyVotedError
-        );
-
-        // checking the vote type
-        match vote_type {
-            VoteType::Yes => {
-                // adding the player to voted players
-                team.distribution_voted_players
-                    .push(*ctx.accounts.signer.key);
-                // incrementing yes votes
-                team.distribution_yes_votes += 1;
-            }
-            VoteType::No => {
-                // adding the player to voted players
-                team.voted_players.push(*ctx.accounts.signer.key);
-            }
-        }
-
-        // checking if the vote is successful
-        if team.distribution_voted_players.len() > 2 && team.distribution_yes_votes > 2 {
-            // if yes votes are more than half of the team members
-            // add the tournament to the team's active tournament
-            team.distribution_voting_result = true;
-        }
-
-        // checking if the vote is failed
-        if team.distribution_voted_players.len() > 2 && team.distribution_yes_votes < 3 {
-            // if yes votes are more than half of the team members
-            // add the tournament to the team's active tournament
-            team.distribution_voting_result = false;
-        }
-
-        Ok(())
+        return handle_distribute_proposal(ctx, _team_name, _team_id, vote_type);
     }
     // two functions above will basically be used to vote for the distribution of the rewards
     // the function below will use the logic to decide if a team can join the tournament or not
@@ -457,25 +165,7 @@ pub mod team_dao {
         _team_name: String,
         _team_id: u64,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the team has 5 players to join the tournament
-        require!(team.members.len() == 5, ErrorCode::NotEnoughPlayersError);
-
-        // checking if the team has an active tournament
-        require!(
-            team.active_tournament != Pubkey::default(),
-            ErrorCode::NoActiveTournamentError
-        );
-
-        // checking if voting result is yes, all players voted for tournament and distribution
-        if team.voting_result == true && team.distribution_yes_votes > 2 {
-            team.can_join_tournament = true;
-        } else {
-            team.can_join_tournament = false;
-        }
-
-        Ok(())
+        return can_join(ctx, _team_name, _team_id);
     }
 
     // distribute rewards
@@ -487,280 +177,6 @@ pub mod team_dao {
         _team_id: u64,
         reward: u64,
     ) -> Result<()> {
-        let team = &mut ctx.accounts.team_account;
-
-        // checking if the account_info key exists in team members
-        require!(
-            team.members.contains(ctx.accounts.to.key),
-            ErrorCode::MemberNotInTeamError
-        );
-
-        // get the index of to account
-        let index = team
-            .members
-            .iter()
-            .position(|&r| r == *ctx.accounts.to.key)
-            .unwrap();
-
-        let expected_max_reward = team.prize * team.distribution_percentages[index] as u64 / 100;
-
-        // checking if the index matches the percentage of the prize and reward distribution
-        require!(
-            reward <= expected_max_reward,
-            ErrorCode::InvalidPercentageError
-        );
-
-        let from = ctx.accounts.from.to_account_info();
-        let to = ctx.accounts.to.to_account_info();
-
-        // Debit from_account and credit to_account
-        **from.try_borrow_mut_lamports()? -= reward;
-        **to.try_borrow_mut_lamports()? += reward;
-
-        Ok(())
+        return claiming_reward(ctx, _team_name, _team_id, reward);
     }
-}
-
-// distribute rewards
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct ClaimReward<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-    #[account(mut)]
-    /// CHECK: This is not dangerous
-    pub from: AccountInfo<'info>,
-    #[account(mut)]
-    /// CHECK: This is not dangerous because we just pay to this account
-    pub to: AccountInfo<'info>,
-    #[account()]
-    pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-// derive macros for member instructions
-
-// derive macro for create team instruction
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct CreateTeam<'info> {
-    #[account(init, payer = signer, space = TeamAccount::LEN, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// derive macro for adding member instruction
-#[derive(Accounts)]
-#[instruction(team_name: String, team_id: u64)]
-pub struct AddMember<'info> {
-    #[account(mut, seeds=[team_name.as_bytes(), &team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(team_name: String, team_id: u64)]
-pub struct RemoveMember<'info> {
-    #[account(mut, seeds=[team_name.as_bytes(), &team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(team_name: String, team_id: u64)]
-pub struct TransferCaptain<'info> {
-    #[account(mut, seeds=[team_name.as_bytes(), &team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// leave team instruction
-#[derive(Accounts)]
-#[instruction(team_name: String, team_id: u64)]
-pub struct LeaveTeam<'info> {
-    #[account(mut, seeds=[team_name.as_bytes(), &team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// init tournament instruction
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct InitTournament<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// vote for tournament instruction
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct VoteForTournament<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    // #[account(mut)]
-    // pub tournament_account: Account<'info, TeamAccount>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// vote for leaving the tournament
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct LeaveTournament<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// init percentage proposal
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct InitPercentageProposal<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// vote for distribution
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct DistributionProposalHandler<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// can join tournament
-#[derive(Accounts)]
-#[instruction(_team_name: String, _team_id: u64)]
-pub struct CanJoinTournament<'info> {
-    #[account(mut, seeds=[_team_name.as_bytes(), &_team_id.to_ne_bytes()], bump = team_account.bump)]
-    pub team_account: Account<'info, TeamAccount>,
-
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// Team account struct
-#[account]
-pub struct TeamAccount {
-    pub captain: Pubkey,
-    pub bump: u8,
-    pub name: String,
-    pub members: Vec<Pubkey>,
-    pub id: u64,
-    pub is_initialized: bool,
-    pub yes_votes: u8,
-    pub voted_players: Vec<Pubkey>,
-    pub active_tournament: Pubkey,
-    pub prize: u64,
-    pub voting_result: bool,
-    pub leave_votes: u8,
-    pub leave_voted_players: Vec<Pubkey>,
-    pub distribution_percentages: Vec<u8>,
-    pub distribution_yes_votes: u8,
-    pub distribution_voted_players: Vec<Pubkey>,
-    pub distribution_voting_result: bool,
-    pub can_join_tournament: bool,
-}
-
-impl TeamAccount {
-    const LEN: usize = 8 // discriminator 
-    + 32 // captain pubkey 
-    + 1 // bump 
-    + 32 // name
-    + 5 * 32 // members vector 
-    + 8 // id
-    + 1 // is_initialized
-    + 1 // yes_votes
-    + 5 * 32 // voted_players vector
-    + 32 // active_tournament
-    + 8 // tournament_prize
-    + 1 // voting_result
-    + 1 * 5 // reward_distribution_percentages vector
-    + 1 // distribution_yes_votes
-    + 5 * 32 // distribution_voted_players vector
-    + 1 // distribution_voting_result
-    + 1; // can_join_tournament
-} // 612 bytes < 10k
-
-// ----------------------------------------------
-// voting related instructions and accounts
-
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub enum VoteType {
-    Yes,
-    No,
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("A team can contain maximum 5 members")]
-    TeamCapacityFullError,
-    #[msg("Invalid bump seeds")]
-    InvalidBumpSeeds,
-    #[msg("A team must contain at least 2 members to be able to remove a member")]
-    TeamCapacityLowError,
-    #[msg("Only captain can call this function")]
-    NotCaptainError,
-    #[msg("Member is not in the team")]
-    MemberNotInTeamError,
-    #[msg("Member is already in the team")]
-    MemberAlreadyInTeamError,
-    #[msg("Captain cannot leave the team unless he transfers the captain role to another member")]
-    CaptainCannotLeaveTeamError,
-    #[msg("Member is already voted for the tournament")]
-    AlreadyVotedError,
-    #[msg("The team has an active tournament and cannot vote for another tournament, leave the current one first")]
-    AlreadyActiveTournamentError,
-    #[msg("The team has no active tournament")]
-    NoActiveTournamentError,
-    #[msg("A team must contain 5 players to join a tournament")]
-    NotEnoughPlayersError,
-    #[msg("The sum of percentages must be equal to 100")]
-    InvalidPercentageError,
-    #[msg("Invalid member for that reward")]
-    InvalidRewardError,
 }
