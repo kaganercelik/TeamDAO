@@ -48,7 +48,7 @@ solana-keygen verify <PUBKEY> ~/my-solana-wallet/my-keypair.json
 ```
 [provider]
 cluster = "localnet"
-wallet = "~/my-solana-wallet/my-keypair.jsonn"
+wallet = "~/my-solana-wallet/my-keypair.json"
 ```
 
 ### Building
@@ -62,7 +62,7 @@ npm install
 anchor build
 anchor keys list
 ```
-  Take the output of program id. Copy and paste it into Anchor.toml ```toml team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41" </p>``` and ```rust declare_id!("DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41");``` here.
+  Take the output of program id. Copy and paste it into Anchor.toml ```team_dao = "DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41"``` and ```declare_id!("DX9sn7m7pn3zQJP5B5oD5YQVQWxen9CX77u8rEqMFC41");``` here.
 
 Build again
 
