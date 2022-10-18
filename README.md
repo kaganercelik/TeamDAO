@@ -286,7 +286,7 @@ anchor test
           Only a member of the team can call this function
         </li>    
         <li>
-          A member can withdraw more than its percentage.
+          A member cant withdraw more than its percentage.
         </li>  
         <li>
           Every member gets their own rewards personally.
